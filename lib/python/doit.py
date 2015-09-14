@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
 from bcpc.openstack import credentials
-from keystoneclient.v2_0 import client as ksclient
+from keystoneclient.auth.identity import v3
+from keystoneclient import session
+#from keystoneclient.v2_0 import client as ksclient
+from keystoneclient.v3 import client as ksclient
 from novaclient.v2 import client as nclient
 from time import sleep
 import sys
@@ -25,6 +28,11 @@ def load_bash_env_file(filename):
         envmap[k] = v
     return envmap
 
+def create_project(ks=None, **project_info):
+    if ks is None:
+        return None
+    return ks.projects.create(**project_info)
+
 def create_tenant(ks=None, **tenant_info):
     if ks is None:
         return None
@@ -44,14 +52,26 @@ if __name__ == '__main__':
 
     env = load_bash_env_file(os.sep.join([os.environ['HOME'], 'adminrc']))
     os.environ.update(env)
-    ks = ksclient.Client(**credentials.get_keystone_creds())
+
+    creds = credentials.get_keystone_creds()
+    creds['user_domain_id'] = 'default'
+    creds['project_id'] = creds['tenant_name']
+    creds['auth_url'] = creds['auth_url'].replace('v2.0','v3')
+    del creds['tenant_name']
+    pp.pprint(creds)
+    auth = v3.Password(**creds)
+    sess = session.Session(auth=auth)
+    ks = ksclient.Client(session=sess)
 
     # Create the tenant
-    tenant_info = {u'tenant_name': u'my-project',
+    project_info = {u'name': u'my-project',
+                   u'domain': 'default',
                    u'description': '',
                    u'enabled': True}
 
-    project = create_tenant(ks, **tenant_info)
+    project = create_project(ks, **project_info)
+    pp.pprint(project._info)
+    sys.exit(1)
 
     # Create the user, role, and associate
     user_info = {u'name': u'someuser',
