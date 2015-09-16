@@ -1,22 +1,21 @@
 #!/usr/bin/env python
 
 from bcpc.openstack import credentials
-from keystoneclient.auth.identity import v3
+from keystoneclient.auth.identity import v2
 from keystoneclient import session
-#from keystoneclient.v2_0 import client as ksclient
-from keystoneclient.v3 import client as ksclient
+from keystoneclient.v2_0 import client as ksclient
 from novaclient.v2 import client as nclient
 from time import sleep
 import sys
 
 
 def load_bash_env_file(filename):
-    """This ill-advised method will load a bash environment file and process it as if
-    where interpreted by the shell. In actual fact, that is all that it does:
-    launches a shell with an empty environment then loads the file and enumerates
-    the the new environment"""
-    ## This is silly, because it implies that you would first have to detect the
-    ## filetype... use shebang maybe?
+    """This ill-advised method will load a bash environment file and process
+    it as if where interpreted by the shell. In actual fact, that is all
+    that it does: launches a shell with an empty environment then loads the
+    file and enumerates the the new environment"""
+    # This is silly, because it implies that you would first have to detect the
+    # filetype... use shebang maybe?
     from subprocess import check_output
     envvars = check_output(['/usr/bin/env', '-', 'BASH_ENV=%s' % filename,
                             '/bin/bash', '-c', '/usr/bin/env'])
@@ -28,15 +27,18 @@ def load_bash_env_file(filename):
         envmap[k] = v
     return envmap
 
+
 def create_project(ks=None, **project_info):
     if ks is None:
         return None
     return ks.projects.create(**project_info)
 
+
 def create_tenant(ks=None, **tenant_info):
     if ks is None:
         return None
     return ks.tenants.create(**tenant_info)
+
 
 def create_user(ks=None, **user_info):
     if ks is None:
@@ -44,7 +46,8 @@ def create_user(ks=None, **user_info):
     return ks.users.create(**user_info)
 
 
-# TODO: Use sessions. See: http://docs.openstack.org/developer/python-keystoneclient/using-sessions.html
+# TODO: Use sessions. See:
+# http://docs.openstack.org/developer/python-keystoneclient/using-sessions.html
 if __name__ == '__main__':
     import os
     import pprint
@@ -54,24 +57,19 @@ if __name__ == '__main__':
     os.environ.update(env)
 
     creds = credentials.get_keystone_creds()
-    creds['user_domain_id'] = 'default'
-    creds['project_id'] = creds['tenant_name']
-    creds['auth_url'] = creds['auth_url'].replace('v2.0','v3')
-    del creds['tenant_name']
     pp.pprint(creds)
-    auth = v3.Password(**creds)
+    auth = v2.Password(**creds)
     sess = session.Session(auth=auth)
     ks = ksclient.Client(session=sess)
 
     # Create the tenant
-    project_info = {u'name': u'my-project',
-                   u'domain': 'default',
-                   u'description': '',
-                   u'enabled': True}
+    project_info = {u'tenant_name': u'my-project',
+                    u'description': '',
+                    u'enabled': True}
 
-    project = create_project(ks, **project_info)
+    # project = create_project(ks, **project_info)
+    project = create_tenant(ks, **project_info)
     pp.pprint(project._info)
-    sys.exit(1)
 
     # Create the user, role, and associate
     user_info = {u'name': u'someuser',
@@ -95,8 +93,8 @@ if __name__ == '__main__':
     img = nc.images.find(**params)
     flavor = nc.flavors.find(name=u'm1.tiny')
     instance_params = {u'name': u'test',
-                    u'image': img,
-                    u'flavor': flavor}
+                       u'image': img,
+                       u'flavor': flavor}
     instance = nc.servers.create(**instance_params)
 
     status = instance.status
@@ -105,7 +103,7 @@ if __name__ == '__main__':
         instance = nc.servers.get(instance.id)
         status = instance.status
     if status != 'ACTIVE':
-        print>>sys.stderr,'Something went wrong with instance %s' % instance.id
+        print>>sys.stderr, 'Something went wrong. [instance=%s]' % instance.id
         sys.exit(-1)
     pp.pprint(instance._info)
 
