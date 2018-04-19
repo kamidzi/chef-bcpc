@@ -1,0 +1,36 @@
+#!/bin/bash
+hash -r
+
+usage(){
+    ret=${1:-0}
+    if [[ $ret -eq 0 ]]; then
+        exec 3>&1
+    else
+        exec 3>&2
+    fi
+    cat <<EoF >&3
+${0##*/}
+
+Takes a snapshot of all vms
+EoF
+    exec 3>&-
+    exit ${ret}
+}
+
+get_vagrant_dirs(){
+    GLOBAL_STATUS="$(vagrant global-status)"
+    awk '$3 == "virtualbox"{print $NF}' <<< "$GLOBAL_STATUS" | sort -u
+}
+
+vagrant_dirs=( `get_vagrant_dirs` )
+for d in ${vagrant_dirs[@]} ; do
+    echo "Found vagrant vm directory at $d"
+    pushd $d &>/dev/null
+    vm_names=( `vagrant status | awk '$NF=="(virtualbox)"{print $1}'` )
+    for vm in ${vm_names[@]}; do
+        echo "  Snapshotting $vm..."
+        vagrant snapshot push "$vm"
+    done
+    popd
+    unset vm_names
+done
